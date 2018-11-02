@@ -690,7 +690,7 @@ foreach my $domain (sort keys %domains) {
     my $domain_info = $domains{$domain};
     next unless $domain_info->{enabled};
     my $s = $option{fast} &&
-      defined $domain_info->{tools}{'tables-restore'}
+      defined $domain_info->{tools}{'tables-legacy-restore'}
       ? execute_fast($domain_info) : execute_slow($domain_info);
     $status = $s if defined $s;
 }
@@ -714,7 +714,7 @@ if ($option{interactive}) {
         print LINES "sleep $option{timeout}\n";
         foreach my $domain (sort keys %domains) {
             my $domain_info = $domains{$domain};
-            my $restore = $domain_info->{tools}{'tables-restore'};
+            my $restore = $domain_info->{tools}{'tables-legacy-restore'};
             next unless defined $restore;
             print LINES "$restore <\$${domain}_tmp\n";
         }
@@ -804,7 +804,7 @@ sub initialize_domain {
     die "Invalid domain '$domain'\n" unless $domain =~ /^(?:ip6?|arp|eb)$/;
 
     my @tools = qw(tables);
-    push @tools, qw(tables-save tables-restore)
+    push @tools, qw(tables-legacy-save tables-legacy-restore)
       if $domain =~ /^ip6?$/;
 
     # determine the location of this domain's tools
@@ -816,8 +816,8 @@ sub initialize_domain {
     # save data which may be used later by the rollback function
     local *SAVE;
     if (!$option{test} &&
-        exists $tools{'tables-save'} &&
-        open(SAVE, "$tools{'tables-save'}|")) {
+        exists $tools{'tables-legacy-save'} &&
+        open(SAVE, "$tools{'tables-legacy-save'}|")) {
         my $save = '';
 
         my $table_info;
@@ -839,9 +839,9 @@ sub initialize_domain {
     }
 
     if ($option{shell} && $option{interactive} &&
-          exists $tools{'tables-save'}) {
+          exists $tools{'tables-legacy-save'}) {
         print LINES "${domain}_tmp=\$(mktemp ferm.XXXXXXXXXX)\n";
-        print LINES "$tools{'tables-save'} >\$${domain}_tmp\n";
+        print LINES "$tools{'tables-legacy-save'} >\$${domain}_tmp\n";
     }
 
     $domain_info->{initialized} = 1;
@@ -2706,7 +2706,7 @@ sub rules_to_save($) {
 sub restore_domain($$) {
     my ($domain_info, $save) = @_;
 
-    my $path = $domain_info->{tools}{'tables-restore'};
+    my $path = $domain_info->{tools}{'tables-legacy-restore'};
     $path .= " --noflush" if $option{noflush};
 
     local *RESTORE;
@@ -2725,7 +2725,7 @@ sub execute_fast($) {
     my $save = rules_to_save($domain_info);
 
     if ($option{lines}) {
-        my $path = $domain_info->{tools}{'tables-restore'};
+        my $path = $domain_info->{tools}{'tables-legacy-restore'};
         $path .= " --noflush" if $option{noflush};
         print LINES "$path <<EOT\n"
           if $option{shell};
@@ -2751,8 +2751,8 @@ sub rollback() {
     my $error;
     while (my ($domain, $domain_info) = each %domains) {
         next unless $domain_info->{enabled};
-        unless (defined $domain_info->{tools}{'tables-restore'}) {
-            print STDERR "Cannot rollback domain '$domain' because there is no ${domain}tables-restore\n";
+        unless (defined $domain_info->{tools}{'tables-legacy-restore'}) {
+            print STDERR "Cannot rollback domain '$domain' because there is no ${domain}tables-legacy-restore\n";
             next;
         }
 
